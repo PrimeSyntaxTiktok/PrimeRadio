@@ -3904,6 +3904,181 @@
             }
         }
 
+
+
+        /* === Micro vocal à côté du titre sur téléphone === */
+        .hero-title-row {
+            display: block;
+        }
+
+        @media screen and (max-width: 700px), (hover: none) and (pointer: coarse) {
+            .hero-title-row {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                gap: clamp(12px, 3.2vw, 18px) !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                position: relative !important;
+                margin-bottom: clamp(14px, 3.5vw, 20px) !important;
+            }
+
+            .hero-title-row .main-title {
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+                margin: 0 !important;
+                letter-spacing: -0.065em !important;
+                white-space: nowrap !important;
+                overflow: visible !important;
+            }
+
+            .hero-title-row .voice-control {
+                position: relative !important;
+                top: auto !important;
+                right: auto !important;
+                bottom: auto !important;
+                left: auto !important;
+                transform: none !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                flex: 0 0 auto !important;
+                width: auto !important;
+                height: auto !important;
+                margin: 0 !important;
+                z-index: 1900 !important;
+            }
+
+            .hero-title-row .voice-btn {
+                width: clamp(62px, 15vw, 72px) !important;
+                height: clamp(62px, 15vw, 72px) !important;
+                min-width: clamp(62px, 15vw, 72px) !important;
+                min-height: clamp(62px, 15vw, 72px) !important;
+                font-size: clamp(1.48rem, 4.7vw, 1.75rem) !important;
+                border-radius: 50% !important;
+                background: #000000 !important;
+                border: 1px solid rgba(255, 255, 255, 0.18) !important;
+                box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(29, 185, 84, 0.08) !important;
+            }
+
+            .hero-title-row .voice-btn:hover,
+            .hero-title-row .voice-btn:focus-visible {
+                transform: scale(1.06) !important;
+                background: #181818 !important;
+            }
+
+            .hero-title-row .voice-btn.listening {
+                background: var(--spotify-light) !important;
+                color: #000000 !important;
+                border-color: transparent !important;
+            }
+
+            .hero-title-row .voice-status,
+            .hero-title-row .voice-commands {
+                position: absolute !important;
+                right: 0 !important;
+                left: auto !important;
+                width: min(340px, calc(100vw - 36px)) !important;
+                max-width: calc(100vw - 36px) !important;
+                z-index: 1950 !important;
+            }
+
+            .hero-title-row .voice-status {
+                top: calc(100% + 12px) !important;
+            }
+
+            .hero-title-row .voice-commands {
+                top: calc(100% + 84px) !important;
+                max-height: min(46vh, 380px) !important;
+                overflow-y: auto !important;
+            }
+        }
+
+        html.prime-mobile-force .hero-title-row {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: clamp(12px, 3.2vw, 18px) !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            position: relative !important;
+            margin-bottom: clamp(14px, 3.5vw, 20px) !important;
+        }
+
+        html.prime-mobile-force .hero-title-row .main-title {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+            white-space: nowrap !important;
+            overflow: visible !important;
+        }
+
+        html.prime-mobile-force .hero-title-row .voice-control {
+            position: relative !important;
+            top: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+            left: auto !important;
+            transform: none !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex: 0 0 auto !important;
+            width: auto !important;
+            height: auto !important;
+            margin: 0 !important;
+            z-index: 1900 !important;
+        }
+
+        html.prime-mobile-force .hero-title-row .voice-btn {
+            width: clamp(62px, 15vw, 72px) !important;
+            height: clamp(62px, 15vw, 72px) !important;
+            min-width: clamp(62px, 15vw, 72px) !important;
+            min-height: clamp(62px, 15vw, 72px) !important;
+            font-size: clamp(1.48rem, 4.7vw, 1.75rem) !important;
+            border-radius: 50% !important;
+            background: #000000 !important;
+            border: 1px solid rgba(255, 255, 255, 0.18) !important;
+            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(29, 185, 84, 0.08) !important;
+        }
+
+        html.prime-mobile-force .hero-title-row .voice-btn.listening {
+            background: var(--spotify-light) !important;
+            color: #000000 !important;
+            border-color: transparent !important;
+        }
+
+        html.prime-mobile-force .hero-title-row .voice-status,
+        html.prime-mobile-force .hero-title-row .voice-commands {
+            position: absolute !important;
+            right: 0 !important;
+            left: auto !important;
+            width: min(340px, calc(100vw - 36px)) !important;
+            max-width: calc(100vw - 36px) !important;
+            z-index: 1950 !important;
+        }
+
+        html.prime-mobile-force .hero-title-row .voice-status {
+            top: calc(100% + 12px) !important;
+        }
+
+        html.prime-mobile-force .hero-title-row .voice-commands {
+            top: calc(100% + 84px) !important;
+            max-height: min(46vh, 380px) !important;
+            overflow-y: auto !important;
+        }
+
+        @media screen and (max-width: 380px) {
+            .hero-title-row .voice-btn,
+            html.prime-mobile-force .hero-title-row .voice-btn {
+                width: 60px !important;
+                height: 60px !important;
+                min-width: 60px !important;
+                min-height: 60px !important;
+                font-size: 1.42rem !important;
+            }
+        }
+
     </style>
 </head>
 
@@ -3941,7 +4116,47 @@
             <section class="hero">
                 <div>
                     <div class="hero-label">Application radio</div>
-                    <h1 class="main-title">Prime Radio</h1>
+                    <div class="hero-title-row">
+                        <h1 class="main-title">Prime Radio</h1>
+    <div class="voice-control">
+                                <button class="voice-btn" id="voiceBtn" type="button" title="Contrôle vocal permanent - Une autorisation unique (Ctrl+V)" aria-label="Activer/Désactiver le contrôle vocal permanent" tabindex="0">
+                                    🎤
+                                </button>
+                        
+                                <div class="voice-status" id="voiceStatus">
+                                    <div id="voiceStatusText">Cliquez sur le micro pour activer le contrôle vocal</div>
+                                    <div class="voice-wave" id="voiceWave" style="display: none;">
+                                        <div class="wave-bar"></div>
+                                        <div class="wave-bar"></div>
+                                        <div class="wave-bar"></div>
+                                        <div class="wave-bar"></div>
+                                        <div class="wave-bar"></div>
+                                    </div>
+                                </div>
+                        
+                                <div class="voice-commands" id="voiceCommands">
+                                    <h4>Commandes vocales</h4>
+                                    <p>Dites "Ok Prime" suivi de votre commande</p>
+                                    <ul>
+                                        <li>"Ok Prime, lance France Inter"</li>
+                                        <li>"Ok Prime, volume à 75%"</li>
+                                        <li>"Ok Prime, volume maximum"</li>
+                                        <li>"Ok Prime, monte le son"</li>
+                                        <li>"Ok Prime, station suivante"</li>
+                                        <li>"Ok Prime, pause"</li>
+                                        <li>"Ok Prime, coupe le son"</li>
+                                        <li>"Ok Prime, qu'est-ce qui joue ?"</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        
+                            <div class="audio-unlock-toast" id="audioUnlockToast" role="button" tabindex="0" aria-label="Activer la lecture audio">
+                                <div class="audio-unlock-card">
+                                    <strong>Lecture bloquée par le navigateur</strong>
+                                    <span>Touchez ici une fois pour autoriser l’audio, puis la commande vocale reprend.</span>
+                                </div>
+                            </div>
+                    </div>
                     <p class="subtitle">
                         Écoutez vos stations favorites en direct.
                     </p>
@@ -3958,45 +4173,6 @@
         </main>
     </div>
 
-
-    <div class="voice-control">
-        <button class="voice-btn" id="voiceBtn" type="button" title="Contrôle vocal permanent - Une autorisation unique (Ctrl+V)" aria-label="Activer/Désactiver le contrôle vocal permanent" tabindex="0">
-            🎤
-        </button>
-
-        <div class="voice-status" id="voiceStatus">
-            <div id="voiceStatusText">Cliquez sur le micro pour activer le contrôle vocal</div>
-            <div class="voice-wave" id="voiceWave" style="display: none;">
-                <div class="wave-bar"></div>
-                <div class="wave-bar"></div>
-                <div class="wave-bar"></div>
-                <div class="wave-bar"></div>
-                <div class="wave-bar"></div>
-            </div>
-        </div>
-
-        <div class="voice-commands" id="voiceCommands">
-            <h4>Commandes vocales</h4>
-            <p>Dites "Ok Prime" suivi de votre commande</p>
-            <ul>
-                <li>"Ok Prime, lance France Inter"</li>
-                <li>"Ok Prime, volume à 75%"</li>
-                <li>"Ok Prime, volume maximum"</li>
-                <li>"Ok Prime, monte le son"</li>
-                <li>"Ok Prime, station suivante"</li>
-                <li>"Ok Prime, pause"</li>
-                <li>"Ok Prime, coupe le son"</li>
-                <li>"Ok Prime, qu'est-ce qui joue ?"</li>
-            </ul>
-        </div>
-    </div>
-
-    <div class="audio-unlock-toast" id="audioUnlockToast" role="button" tabindex="0" aria-label="Activer la lecture audio">
-        <div class="audio-unlock-card">
-            <strong>Lecture bloquée par le navigateur</strong>
-            <span>Touchez ici une fois pour autoriser l’audio, puis la commande vocale reprend.</span>
-        </div>
-    </div>
 
     <div class="audio-player" id="audioPlayer" role="region" aria-label="Lecteur audio">
         <div class="player-container">
