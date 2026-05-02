@@ -3763,6 +3763,147 @@
             }
         }
 
+
+
+        /* === Correctif final : cards fluides + bouton play fiable + installer visible mobile === */
+        .radio-card {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            will-change: transform, background-color, border-color;
+            contain: layout paint style;
+        }
+
+        .radio-logo {
+            isolation: isolate;
+            transform: translateZ(0);
+        }
+
+        .radio-logo img {
+            transform: translateZ(0) scale(1);
+            backface-visibility: hidden;
+            transition: transform 220ms cubic-bezier(0.3, 0, 0, 1), filter 220ms ease;
+            will-change: transform;
+        }
+
+        .radio-card:hover .radio-logo img,
+        .radio-card.hover-ready .radio-logo img,
+        .radio-card:focus-visible .radio-logo img,
+        .radio-card:focus-within .radio-logo img {
+            transform: translateZ(0) scale(1.018);
+        }
+
+        .radio-card .play-overlay {
+            position: absolute !important;
+            right: 10px !important;
+            bottom: 10px !important;
+            z-index: 5 !important;
+            opacity: 0 !important;
+            visibility: visible !important;
+            pointer-events: none !important;
+            transform: translate3d(0, 12px, 0) scale(0.94) !important;
+            transform-origin: center center !important;
+            will-change: opacity, transform, background-color !important;
+            backface-visibility: hidden !important;
+            transition:
+                opacity 150ms ease,
+                transform 180ms cubic-bezier(0.3, 0, 0, 1),
+                background-color 130ms ease,
+                box-shadow 130ms ease !important;
+        }
+
+        .radio-card:hover .play-overlay,
+        .radio-card.hover-ready .play-overlay,
+        .radio-card:focus-visible .play-overlay,
+        .radio-card:focus-within .play-overlay,
+        .radio-card.playing .play-overlay {
+            opacity: 1 !important;
+            transform: translate3d(0, 0, 0) scale(1) !important;
+        }
+
+        .radio-card:hover .play-overlay,
+        .radio-card.hover-ready .play-overlay,
+        .radio-card:focus-visible .play-overlay,
+        .radio-card:focus-within .play-overlay {
+            background: #1fdf64 !important;
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.46) !important;
+        }
+
+        .radio-card:active .play-overlay {
+            transform: translate3d(0, 0, 0) scale(0.96) !important;
+            background: #169c46 !important;
+        }
+
+        .radio-card .play-overlay svg {
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            margin: 0 !important;
+            pointer-events: none !important;
+        }
+
+        @media (hover: none), (pointer: coarse) {
+            .radio-card .play-overlay {
+                opacity: 1 !important;
+                transform: translate3d(0, 0, 0) scale(1) !important;
+            }
+        }
+
+        html.prime-mobile-force .topbar {
+            justify-content: flex-start !important;
+        }
+
+        html.prime-mobile-force .topbar-left {
+            width: auto !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+        }
+
+        html.prime-mobile-force .topbar-actions {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            flex: 0 0 auto !important;
+            min-width: max-content !important;
+            margin-left: clamp(8px, 2.4vw, 12px) !important;
+        }
+
+        html.prime-mobile-force #installAppBtn.mobile-install-ready {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            height: clamp(36px, 9.2vw, 42px) !important;
+            min-width: clamp(88px, 22vw, 108px) !important;
+            padding: 0 clamp(14px, 3.6vw, 18px) !important;
+            border-radius: 999px !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-size: clamp(0.82rem, 2.7vw, 0.94rem) !important;
+            font-weight: 900 !important;
+            line-height: 1 !important;
+            white-space: nowrap !important;
+            box-shadow: none !important;
+        }
+
+        html.prime-mobile-force #installAppBtn.mobile-install-ready:hover,
+        html.prime-mobile-force #installAppBtn.mobile-install-ready:focus-visible {
+            background: #f6f6f6 !important;
+            transform: scale(1.04) !important;
+        }
+
+        @media screen and (max-width: 390px) {
+            html.prime-mobile-force #installAppBtn.mobile-install-ready {
+                min-width: auto !important;
+                padding: 0 12px !important;
+                font-size: 0.78rem !important;
+            }
+
+            html.prime-mobile-force .main-search input {
+                padding-left: 42px !important;
+                font-size: 0.88rem !important;
+            }
+        }
+
     </style>
 </head>
 
@@ -3993,6 +4134,7 @@
         document.getElementById("manifestPlaceholder").setAttribute("href", manifestURL);
 
         let deferredInstallPrompt = null;
+        let appInstallAccepted = false;
 
         window.addEventListener("beforeinstallprompt", (event) => {
             event.preventDefault();
@@ -4002,16 +4144,37 @@
 
         window.addEventListener("appinstalled", () => {
             deferredInstallPrompt = null;
+            appInstallAccepted = true;
             showInstallButtons(false);
         });
 
+        function isPrimeRadioStandalone() {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true;
+        }
+
+        function isPrimeRadioMobileSurface() {
+            return document.documentElement.classList.contains('prime-mobile-force') ||
+                /Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini/i.test(navigator.userAgent || '') ||
+                ((navigator.maxTouchPoints || 0) > 0 && Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 1180);
+        }
+
         function showInstallButtons(show) {
-            const display = show ? "inline-flex" : "none";
+            const mobileFallback = isPrimeRadioMobileSurface() && !isPrimeRadioStandalone() && !appInstallAccepted;
+            const shouldShow = Boolean(show || mobileFallback);
+            const display = shouldShow ? "inline-flex" : "none";
             const installAppBtn = document.getElementById("installAppBtn");
             const installHeroBtn = document.getElementById("installHeroBtn");
 
-            if (installAppBtn) installAppBtn.style.display = display;
-            if (installHeroBtn) installHeroBtn.style.display = display;
+            if (installAppBtn) {
+                installAppBtn.style.display = display;
+                installAppBtn.classList.toggle('mobile-install-ready', shouldShow && isPrimeRadioMobileSurface());
+            }
+
+            if (installHeroBtn) {
+                installHeroBtn.style.display = display;
+                installHeroBtn.classList.toggle('mobile-install-ready', shouldShow && isPrimeRadioMobileSurface());
+            }
         }
 
         async function installPrimeRadio() {
@@ -4021,6 +4184,7 @@
 
                 if (choiceResult.outcome === "accepted") {
                     deferredInstallPrompt = null;
+                    appInstallAccepted = true;
                     showInstallButtons(false);
                 }
 
@@ -4029,6 +4193,12 @@
 
             alert("Pour installer Prime Radio : sur Android, ouvrez le menu du navigateur puis choisissez “Installer l’application”. Sur iPhone, touchez Partager puis “Ajouter à l’écran d’accueil”.");
         }
+
+        showInstallButtons(false);
+        window.addEventListener('resize', () => showInstallButtons(Boolean(deferredInstallPrompt)));
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => showInstallButtons(Boolean(deferredInstallPrompt)), 250);
+        });
 
         const radios = [
             {
@@ -4941,6 +5111,11 @@ audioElement.volume = 0.3;
                         playRadio(index);
                     }
                 });
+
+                card.addEventListener('pointerenter', () => card.classList.add('hover-ready'));
+                card.addEventListener('pointerleave', () => card.classList.remove('hover-ready'));
+                card.addEventListener('mouseenter', () => card.classList.add('hover-ready'));
+                card.addEventListener('mouseleave', () => card.classList.remove('hover-ready'));
 
                 card.innerHTML = `
                     <div class="radio-logo">
