@@ -3662,6 +3662,52 @@
             }
         }
 
+
+
+        /* === Commande vocale restaurée === */
+        .voice-control {
+            display: flex;
+        }
+
+        .voice-btn {
+            font-family: 'Inter', sans-serif;
+            line-height: 1;
+        }
+
+        @media screen and (max-width: 700px), (hover: none) and (pointer: coarse) {
+            .voice-control {
+                display: flex !important;
+                top: auto !important;
+                right: 14px !important;
+                bottom: calc(var(--player-height) + 16px) !important;
+                z-index: 1700;
+            }
+
+            .voice-btn {
+                width: 54px;
+                height: 54px;
+                font-size: 1.28rem;
+                box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45);
+            }
+
+            .voice-status,
+            .voice-commands {
+                width: min(330px, calc(100vw - 28px));
+                max-width: calc(100vw - 28px);
+            }
+
+            .voice-commands {
+                max-height: 44vh;
+                overflow-y: auto;
+            }
+        }
+
+        @media print {
+            .voice-control {
+                display: none !important;
+            }
+        }
+
     </style>
 </head>
 
@@ -3714,6 +3760,39 @@
                 </div>
             </section>
         </main>
+    </div>
+
+
+    <div class="voice-control">
+        <button class="voice-btn" id="voiceBtn" type="button" title="Contrôle vocal permanent - Une autorisation unique (Ctrl+V)" aria-label="Activer/Désactiver le contrôle vocal permanent" tabindex="0">
+            🎤
+        </button>
+
+        <div class="voice-status" id="voiceStatus">
+            <div id="voiceStatusText">Initialisation du contrôle vocal...</div>
+            <div class="voice-wave" id="voiceWave" style="display: none;">
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+            </div>
+        </div>
+
+        <div class="voice-commands" id="voiceCommands">
+            <h4>Commandes vocales</h4>
+            <p>Dites "Ok Prime" suivi de votre commande</p>
+            <ul>
+                <li>"Ok Prime, lance France Inter"</li>
+                <li>"Ok Prime, volume à 75%"</li>
+                <li>"Ok Prime, volume maximum"</li>
+                <li>"Ok Prime, monte le son"</li>
+                <li>"Ok Prime, station suivante"</li>
+                <li>"Ok Prime, pause"</li>
+                <li>"Ok Prime, coupe le son"</li>
+                <li>"Ok Prime, qu'est-ce qui joue ?"</li>
+            </ul>
+        </div>
     </div>
 
     <div class="audio-player" id="audioPlayer" role="region" aria-label="Lecteur audio">
@@ -4020,6 +4099,19 @@
         const fullscreenPlayBtn = document.getElementById('fullscreenPlayBtn');
         const fullscreenLiveBadge = document.getElementById('fullscreenLiveBadge');
 
+        let recognition = null;
+        let isVoiceControlActive = true;
+        let isListening = false;
+        let isWakeWordMode = true;
+        let microphonePermissionGranted = false;
+        let permissionChecked = false;
+
+        const voiceBtn = document.getElementById('voiceBtn');
+        const voiceStatus = document.getElementById('voiceStatus');
+        const voiceStatusText = document.getElementById('voiceStatusText');
+        const voiceWave = document.getElementById('voiceWave');
+        const voiceCommands = document.getElementById('voiceCommands');
+
         const SPOTIFY_ICONS = {
             play: '<svg class="spotify-icon spotify-icon-play" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 1.713a.7.7 0 0 1 1.05-.607l10.89 6.288a.7.7 0 0 1 0 1.212L4.05 14.894A.7.7 0 0 1 3 14.288V1.713z"/></svg>',
             pause: '<svg class="spotify-icon spotify-icon-pause" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M2.7 1a.7.7 0 0 0-.7.7v12.6a.7.7 0 0 0 .7.7h2.6a.7.7 0 0 0 .7-.7V1.7a.7.7 0 0 0-.7-.7H2.7zm8 0a.7.7 0 0 0-.7.7v12.6a.7.7 0 0 0 .7.7h2.6a.7.7 0 0 0 .7-.7V1.7a.7.7 0 0 0-.7-.7h-2.6z"/></svg>',
@@ -4075,6 +4167,619 @@
             const muted = isMuted || audioElement.volume === 0;
             setSpotifyIcon(volumeIcon, muted ? 'mute' : 'volume', muted ? 'Remettre le son' : 'Couper le son');
         }
+
+        async function checkMicrophonePermission() {
+            try {
+                if (navigator.permissions) {
+                    const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
+
+                    if (permissionStatus.state === 'granted') {
+                        microphonePermissionGranted = true;
+                        return true;
+                    }
+
+                    if (permissionStatus.state === 'denied') {
+                        microphonePermissionGranted = false;
+                        return false;
+                    }
+                }
+
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('MediaDevices API not available');
+                }
+
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+
+                microphonePermissionGranted = true;
+                return true;
+            } catch (error) {
+                console.error('Microphone permission error:', error);
+                microphonePermissionGranted = false;
+
+                if (error.name === 'NotAllowedError') {
+                    voiceStatusText.textContent = 'Permission microphone refusée';
+                } else if (error.name === 'NotFoundError') {
+                    voiceStatusText.textContent = 'Aucun microphone trouvé';
+                } else {
+                    voiceStatusText.textContent = 'Erreur d’accès au microphone';
+                }
+
+                return false;
+            }
+        }
+
+        async function initVoiceControl() {
+            if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+                console.warn('Speech recognition not supported');
+                voiceBtn.style.display = 'none';
+                voiceStatusText.textContent = 'Reconnaissance vocale non supportée';
+                return false;
+            }
+
+            if (!permissionChecked) {
+                permissionChecked = true;
+                voiceStatusText.textContent = 'Vérification des permissions...';
+
+                const hasPermission = await checkMicrophonePermission();
+
+                if (!hasPermission) {
+                    voiceStatusText.textContent = 'Cliquez sur le micro pour autoriser l’accès';
+                    isVoiceControlActive = false;
+                    voiceStatus.classList.add('active');
+                    return false;
+                }
+            }
+
+            if (!microphonePermissionGranted) return false;
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'fr-FR';
+            recognition.maxAlternatives = 3;
+
+            recognition.onstart = () => {
+                isListening = true;
+
+                if (isWakeWordMode) {
+                    voiceBtn.classList.add('listening');
+                    voiceStatusText.textContent = 'En écoute... Dites "Ok Prime" puis votre commande';
+                    voiceWave.style.display = 'flex';
+                }
+            };
+
+            recognition.onresult = (event) => {
+                let transcript = '';
+                let isFinal = false;
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) isFinal = true;
+                }
+
+                if (!isWakeWordMode) return;
+
+                const cleanTranscript = transcript.toLowerCase().trim();
+
+                if (
+                    cleanTranscript.includes('ok prime') ||
+                    cleanTranscript.includes('okay prime') ||
+                    cleanTranscript.includes('o k prime') ||
+                    cleanTranscript.includes('ok radio') ||
+                    cleanTranscript.includes('okay radio') ||
+                    cleanTranscript.includes('o k radio') ||
+                    cleanTranscript.includes('hockey radio')
+                ) {
+                    voiceStatusText.textContent = `🎤 "${transcript}"`;
+
+                    if (isFinal) {
+                        let command = cleanTranscript;
+                        const wakeWords = [
+                            'ok prime',
+                            'okay prime',
+                            'o k prime',
+                            'ok radio',
+                            'okay radio',
+                            'o k radio',
+                            'hockey radio'
+                        ];
+
+                        for (const wake of wakeWords) {
+                            if (command.includes(wake)) {
+                                command = command.split(wake)[1]?.trim() || '';
+                                break;
+                            }
+                        }
+
+                        if (command) {
+                            processVoiceCommand(command);
+                        } else {
+                            voiceStatusText.textContent = 'En attente de votre commande...';
+                        }
+                    }
+                } else if (isFinal) {
+                    voiceStatusText.textContent = 'En écoute... Dites "Ok Prime" puis votre commande';
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Voice recognition error:', event.error);
+
+                if (event.error === 'not-allowed') {
+                    microphonePermissionGranted = false;
+                    voiceStatusText.textContent = 'Permission microphone refusée';
+                    deactivateVoiceControl();
+                    return;
+                }
+
+                if (event.error === 'no-speech') {
+                    setTimeout(() => {
+                        if (isVoiceControlActive && microphonePermissionGranted) {
+                            startContinuousListening();
+                        }
+                    }, 1000);
+                    return;
+                }
+
+                let errorMessage = 'Erreur de reconnaissance vocale';
+
+                switch (event.error) {
+                    case 'audio-capture':
+                        errorMessage = 'Microphone non accessible';
+                        break;
+                    case 'network':
+                        errorMessage = 'Erreur réseau';
+                        break;
+                    case 'service-not-allowed':
+                        errorMessage = 'Service non autorisé';
+                        break;
+                }
+
+                voiceStatusText.textContent = errorMessage;
+
+                setTimeout(() => {
+                    if (isVoiceControlActive && microphonePermissionGranted) {
+                        startContinuousListening();
+                    }
+                }, 2000);
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+
+                if (isVoiceControlActive && microphonePermissionGranted) {
+                    setTimeout(() => {
+                        startContinuousListening();
+                    }, 500);
+                }
+            };
+
+            if (microphonePermissionGranted) {
+                activateVoiceControl();
+                startContinuousListening();
+            }
+
+            return true;
+        }
+
+        function startContinuousListening() {
+            if (!recognition || isListening || !microphonePermissionGranted) return;
+
+            try {
+                recognition.start();
+            } catch (error) {
+                console.error('Error starting continuous listening:', error);
+
+                if (error.name === 'NotAllowedError') {
+                    microphonePermissionGranted = false;
+                    voiceStatusText.textContent = 'Permission microphone révoquée';
+                    deactivateVoiceControl();
+                    return;
+                }
+
+                setTimeout(() => {
+                    if (isVoiceControlActive && !isListening && microphonePermissionGranted) {
+                        startContinuousListening();
+                    }
+                }, 1000);
+            }
+        }
+
+        async function toggleVoiceControl() {
+            if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+                voiceStatusText.textContent = 'Reconnaissance vocale non supportée';
+                return;
+            }
+
+            if (isVoiceControlActive) {
+                deactivateVoiceControl();
+            } else {
+                if (!microphonePermissionGranted) {
+                    voiceStatusText.textContent = 'Demande d’autorisation microphone...';
+
+                    const hasPermission = await checkMicrophonePermission();
+
+                    if (!hasPermission) {
+                        voiceStatusText.textContent = 'Permission microphone requise pour continuer';
+                        return;
+                    }
+
+                    if (!recognition) {
+                        await initVoiceControl();
+                        return;
+                    }
+                }
+
+                activateVoiceControl();
+                startContinuousListening();
+            }
+        }
+
+        function activateVoiceControl() {
+            isVoiceControlActive = true;
+            isWakeWordMode = true;
+            voiceStatus.classList.add('active');
+            voiceCommands.classList.add('active');
+            voiceBtn.title = 'Désactiver le contrôle vocal';
+            voiceStatusText.textContent = 'Contrôle vocal activé - En écoute permanente';
+
+            setTimeout(() => {
+                if (isVoiceControlActive) {
+                    voiceCommands.classList.remove('active');
+                }
+            }, 8000);
+        }
+
+        function deactivateVoiceControl() {
+            isVoiceControlActive = false;
+            isWakeWordMode = false;
+
+            if (recognition && isListening) {
+                recognition.stop();
+            }
+
+            stopListening();
+            voiceStatus.classList.remove('active');
+            voiceCommands.classList.remove('active');
+            voiceBtn.title = 'Activer le contrôle vocal';
+            voiceStatusText.textContent = 'Contrôle vocal désactivé';
+        }
+
+        function stopListening() {
+            isListening = false;
+            voiceBtn.classList.remove('listening', 'processing');
+            voiceWave.style.display = 'none';
+
+            if (isVoiceControlActive && isWakeWordMode) {
+                voiceStatusText.textContent = 'En écoute... Dites "Ok Prime" puis votre commande';
+            }
+        }
+
+        function processVoiceCommand(command) {
+            console.log('Processing command:', command);
+            voiceBtn.classList.add('processing');
+
+            command = command.replace(/[.,!?;]/g, '').toLowerCase();
+
+            const radioMappings = {
+                'france inter': 'France Inter',
+                'france info': 'France Info',
+                'france bleu': 'France Bleu',
+                'france culture': 'France Culture',
+                'france musique': 'France Musique',
+                'europe 1': 'Europe 1',
+                'europe un': 'Europe 1',
+                'rtl': 'RTL',
+                'rtl2': 'RTL2',
+                'rtl deux': 'RTL2',
+                'nrj': 'NRJ',
+                'energie': 'NRJ',
+                'skyrock': 'Skyrock',
+                'sky rock': 'Skyrock',
+                'fun radio': 'Fun Radio',
+                'fun': 'Fun Radio',
+                'chérie fm': 'Chérie FM',
+                'cherie fm': 'Chérie FM',
+                'chérie': 'Chérie FM',
+                'cherie': 'Chérie FM',
+                'rire et chansons': 'Rire & Chansons',
+                'rire & chansons': 'Rire & Chansons',
+                'rire chansons': 'Rire & Chansons',
+                'nostalgie': 'Nostalgie',
+                'rfm': 'RFM',
+                'fip': 'FIP',
+                'direct fm': 'Direct FM',
+                'direct': 'Direct FM'
+            };
+
+            try {
+                if (command.includes('aide') || command.includes('help') || command.includes('commande')) {
+                    voiceCommands.classList.add('active');
+                    voiceStatusText.textContent = 'Commandes disponibles affichées';
+                    return;
+                }
+
+                if (
+                    command.includes('joue') ||
+                    command.includes('play') ||
+                    command.includes('lance') ||
+                    command.includes('démarre') ||
+                    command.includes('demarre') ||
+                    command.includes('reprend')
+                ) {
+                    let radioFound = false;
+
+                    for (const [key, value] of Object.entries(radioMappings)) {
+                        if (command.includes(key)) {
+                            const radioIndex = radios.findIndex(radio => radio.name === value);
+
+                            if (radioIndex !== -1) {
+                                playRadio(radioIndex);
+                                voiceStatusText.textContent = `Lecture: ${value}`;
+                                radioFound = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!radioFound) {
+                        if (currentRadioIndex === -1) {
+                            playRadio(0);
+                            voiceStatusText.textContent = `Lecture: ${radios[0].name}`;
+                        } else {
+                            togglePlay();
+                            voiceStatusText.textContent = isPlaying ? `Lecture: ${radios[currentRadioIndex].name}` : 'Lecture en cours';
+                        }
+                    }
+
+                    return;
+                }
+
+                if (
+                    command.includes('pause') ||
+                    command.includes('arrête') ||
+                    command.includes('arrete') ||
+                    command.includes('stop') ||
+                    command.includes('stoppe')
+                ) {
+                    if (currentRadioIndex !== -1 && isPlaying) {
+                        togglePlay();
+                        voiceStatusText.textContent = 'Lecture en pause';
+                    } else {
+                        voiceStatusText.textContent = 'Aucune radio en cours';
+                    }
+
+                    return;
+                }
+
+                if (
+                    command.includes('suivant') ||
+                    command.includes('next') ||
+                    command.includes('après') ||
+                    command.includes('apres') ||
+                    command.includes('prochain') ||
+                    command.includes('change')
+                ) {
+                    if (currentRadioIndex !== -1) {
+                        nextRadio();
+                        voiceStatusText.textContent = `Station suivante: ${radios[currentRadioIndex].name}`;
+                    } else {
+                        voiceStatusText.textContent = 'Aucune radio sélectionnée';
+                    }
+
+                    return;
+                }
+
+                if (
+                    command.includes('précédent') ||
+                    command.includes('precedent') ||
+                    command.includes('previous') ||
+                    command.includes('avant') ||
+                    command.includes('retour')
+                ) {
+                    if (currentRadioIndex !== -1) {
+                        previousRadio();
+                        voiceStatusText.textContent = `Station précédente: ${radios[currentRadioIndex].name}`;
+                    } else {
+                        voiceStatusText.textContent = 'Aucune radio sélectionnée';
+                    }
+
+                    return;
+                }
+
+                if (
+                    command.includes('volume') ||
+                    command.includes('son') ||
+                    command.includes('audio') ||
+                    command.includes('fort') ||
+                    command.includes('faible') ||
+                    command.includes('mute') ||
+                    command.includes('silence') ||
+                    command.includes('coupe') ||
+                    command.includes('baisse') ||
+                    command.includes('monte') ||
+                    command.includes('augmente') ||
+                    command.includes('diminue')
+                ) {
+                    let volumeChanged = false;
+                    let newVolume = audioElement.volume;
+
+                    const percentageMatch = command.match(/(\d+)\s*(?:pourcent|%|pour\s*cent)/);
+
+                    if (percentageMatch) {
+                        const percentage = parseInt(percentageMatch[1]);
+
+                        if (percentage >= 0 && percentage <= 100) {
+                            newVolume = percentage / 100;
+                            volumeChanged = true;
+                            voiceStatusText.textContent = `Volume: ${percentage}%`;
+                        }
+                    } else if (command.match(/volume\s+(?:à\s+)?(\d+)(?!\s*(?:pourcent|%|pour\s*cent))/)) {
+                        const match = command.match(/volume\s+(?:à\s+)?(\d+)/);
+                        const number = parseInt(match[1]);
+
+                        if (number >= 0 && number <= 100) {
+                            newVolume = number / 100;
+                            volumeChanged = true;
+                            voiceStatusText.textContent = `Volume: ${number}%`;
+                        }
+                    } else if (command.includes('minimum') || command.includes('mini') || command.includes('très faible') || command.includes('tres faible')) {
+                        newVolume = 0.05;
+                        volumeChanged = true;
+                        voiceStatusText.textContent = 'Volume: minimum (5%)';
+                    } else if (command.includes('maximum') || command.includes('maxi') || command.includes('très fort') || command.includes('tres fort') || command.includes('fond')) {
+                        newVolume = 1.0;
+                        volumeChanged = true;
+                        voiceStatusText.textContent = 'Volume: maximum (100%)';
+                    } else if (command.includes('moyen') || command.includes('milieu') || command.includes('normal') || command.includes('standard')) {
+                        newVolume = 0.5;
+                        volumeChanged = true;
+                        voiceStatusText.textContent = 'Volume: moyen (50%)';
+                    } else if (command.includes('faible') || command.includes('bas') || command.includes('doux')) {
+                        newVolume = 0.2;
+                        volumeChanged = true;
+                        voiceStatusText.textContent = 'Volume: faible (20%)';
+                    } else if (command.includes('fort') || command.includes('haut') || command.includes('élevé') || command.includes('eleve')) {
+                        newVolume = 0.8;
+                        volumeChanged = true;
+                        voiceStatusText.textContent = 'Volume: fort (80%)';
+                    } else if (command.includes('plus') || command.includes('augmente') || command.includes('monte') || command.includes('hausse')) {
+                        let increment = 0.1;
+                        const incrementMatch = command.match(/(?:plus|augmente|monte|hausse).*?(\d+)/);
+
+                        if (incrementMatch) {
+                            increment = parseInt(incrementMatch[1]) / 100;
+                        } else if (command.includes('beaucoup') || command.includes('énormément') || command.includes('enormement') || command.includes('très') || command.includes('tres')) {
+                            increment = 0.3;
+                        } else if (command.includes('peu') || command.includes('légèrement') || command.includes('legerement') || command.includes('doucement')) {
+                            increment = 0.05;
+                        }
+
+                        newVolume = Math.min(1, audioElement.volume + increment);
+                        volumeChanged = true;
+                        voiceStatusText.textContent = `Volume: ${Math.round(newVolume * 100)}%`;
+                    } else if (command.includes('moins') || command.includes('diminue') || command.includes('baisse') || command.includes('réduis') || command.includes('reduis')) {
+                        let decrement = 0.1;
+                        const decrementMatch = command.match(/(?:moins|diminue|baisse|réduis|reduis).*?(\d+)/);
+
+                        if (decrementMatch) {
+                            decrement = parseInt(decrementMatch[1]) / 100;
+                        } else if (command.includes('beaucoup') || command.includes('énormément') || command.includes('enormement') || command.includes('très') || command.includes('tres')) {
+                            decrement = 0.3;
+                        } else if (command.includes('peu') || command.includes('légèrement') || command.includes('legerement') || command.includes('doucement')) {
+                            decrement = 0.05;
+                        }
+
+                        newVolume = Math.max(0, audioElement.volume - decrement);
+                        volumeChanged = true;
+                        voiceStatusText.textContent = `Volume: ${Math.round(newVolume * 100)}%`;
+                    } else if (command.includes('coupe') || command.includes('mute') || command.includes('silence') || command.includes('éteins') || command.includes('eteins') || command.includes('zero')) {
+                        toggleMute();
+                        voiceStatusText.textContent = isMuted ? 'Son coupé' : 'Son remis';
+                        return;
+                    } else if (command.includes('remet') || command.includes('rallume') || command.includes('unmute')) {
+                        if (isMuted) {
+                            toggleMute();
+                            voiceStatusText.textContent = 'Son remis';
+                        } else {
+                            voiceStatusText.textContent = 'Son déjà actif';
+                        }
+
+                        return;
+                    }
+
+                    if (volumeChanged) {
+                        audioElement.volume = newVolume;
+                        volumeSlider.value = newVolume;
+
+                        if (newVolume === 0) {
+                            isMuted = true;
+                        } else {
+                            isMuted = false;
+                            previousVolume = newVolume;
+                        }
+
+                        updateVolumeButton();
+                    } else {
+                        voiceStatusText.textContent = `Volume actuel: ${Math.round(audioElement.volume * 100)}%`;
+                    }
+
+                    return;
+                }
+
+                if (
+                    command.includes('que') &&
+                    (
+                        command.includes('joue') ||
+                        command.includes('écoute') ||
+                        command.includes('ecoute') ||
+                        command.includes('actuel') ||
+                        command.includes('maintenant')
+                    )
+                ) {
+                    if (currentRadioIndex !== -1) {
+                        const radio = radios[currentRadioIndex];
+                        const status = isPlaying ? 'en cours' : 'en pause';
+                        voiceStatusText.textContent = `Radio: ${radio.name} (${status})`;
+                    } else {
+                        voiceStatusText.textContent = 'Aucune radio sélectionnée';
+                    }
+
+                    return;
+                }
+
+                let radioFound = false;
+
+                for (const [key, value] of Object.entries(radioMappings)) {
+                    if (command.includes(key)) {
+                        const radioIndex = radios.findIndex(radio => radio.name === value);
+
+                        if (radioIndex !== -1) {
+                            playRadio(radioIndex);
+                            voiceStatusText.textContent = `Je lance ${value}`;
+                            radioFound = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!radioFound) {
+                    voiceStatusText.textContent = 'Commande non reconnue';
+                }
+            } catch (error) {
+                console.error('Error processing voice command:', error);
+                voiceStatusText.textContent = 'Erreur lors du traitement';
+            } finally {
+                setTimeout(() => {
+                    voiceBtn.classList.remove('processing');
+                }, 1000);
+            }
+        }
+
+        window.addEventListener('load', async () => {
+            if (voiceBtn) {
+                await initVoiceControl();
+            }
+        });
+
+        if (voiceBtn) {
+            voiceBtn.addEventListener('click', () => {
+                toggleVoiceControl();
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            if (e.code === 'KeyV' && e.ctrlKey) {
+                e.preventDefault();
+                toggleVoiceControl();
+            }
+        });
+
 audioElement.volume = 0.3;
         refreshSpotifyStaticIcons();
         if (libraryCount) libraryCount.textContent = radios.length;
@@ -4415,8 +5120,8 @@ audioElement.volume = 0.3;
             playerSubtitle.textContent = 'Erreur de connexion';
             visualizer.style.display = 'none';
             visualizer.setAttribute('aria-hidden', 'true');
-            updatePlayerButtons();
             isPlaying = false;
+            updatePlayerButtons();
             if (fullscreenSubtitle) fullscreenSubtitle.textContent = 'Erreur de connexion';
             updatePlayingCard();
             updateMiniPlaying();
