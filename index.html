@@ -4376,6 +4376,20 @@
             setTimeout(() => showInstallButtons(Boolean(deferredInstallPrompt)), 250);
         });
 
+        const PRIME_FESTIVAL_ARTIST = "Prime Syntax";
+
+        const PRIME_FESTIVAL_EDM_TRACKS = [
+            {
+                title: "Prime Festival EDM",
+                url: "https://cdn.discordapp.com/attachments/1500576941147689043/1500577003521441842/Neon_Summer.mp3?ex=69f8f0bd&is=69f79f3d&hm=829fca942af05b7bcd06f729e0ab361567363ab7828030dd4cf936b80b9b32f6&"
+            }
+            // Ajoute tes prochaines musiques Prime Festival EDM juste en dessous, comme ceci :
+            // ,{
+            //     title: "Nom de la musique",
+            //     url: "https://lien-direct-du-fichier-audio.mp3"
+            // }
+        ];
+
         const radios = [
             {
                 name: "Direct FM",
@@ -4478,6 +4492,15 @@
                 location: "National",
                 stream: "https://icecast.radiofrance.fr/francemusique-midfi.mp3",
                 logo: "https://i.ibb.co/ycRh4bTx/t-l-chargement-10.png"
+            },
+            {
+                name: "Prime Festival EDM",
+                location: "Prime Syntax",
+                stream: PRIME_FESTIVAL_EDM_TRACKS[0]?.url || "",
+                logo: PRIME_LOGO_URL,
+                artist: PRIME_FESTIVAL_ARTIST,
+                playlist: PRIME_FESTIVAL_EDM_TRACKS,
+                type: "playlist"
             }
         ];
 
@@ -4486,6 +4509,7 @@
         let isMuted = false;
         let previousVolume = 0.3;
         let currentFilter = "";
+        let currentPlaylistTrackIndex = 0;
 
         const audioElement = document.getElementById('audioElement');
         const audioPlayer = document.getElementById('audioPlayer');
@@ -4941,7 +4965,11 @@
                 'rfm': 'RFM',
                 'fip': 'FIP',
                 'direct fm': 'Direct FM',
-                'direct': 'Direct FM'
+                'direct': 'Direct FM',
+                'prime festival edm': 'Prime Festival EDM',
+                'prime festival': 'Prime Festival EDM',
+                'festival edm': 'Prime Festival EDM',
+                'edm': 'Prime Festival EDM'
             };
 
             try {
@@ -5172,7 +5200,7 @@
                     if (currentRadioIndex !== -1) {
                         const radio = radios[currentRadioIndex];
                         const status = isPlaying ? 'en cours' : 'en pause';
-                        voiceStatusText.textContent = `Radio: ${radio.name} (${status})`;
+                        voiceStatusText.textContent = getVoiceNowPlayingText(radio, status);
                     } else {
                         voiceStatusText.textContent = 'Aucune radio sélectionnée';
                     }
@@ -5377,44 +5405,131 @@ audioElement.volume = 0.3;
             });
         }
 
-        function playRadio(index) {
-            if (index < 0 || index >= radios.length) return;
+        function isPlaylistRadio(radio) {
+            return radio && Array.isArray(radio.playlist) && radio.playlist.length > 0;
+        }
 
-            const radio = radios[index];
-            currentRadioIndex = index;
+        function cleanTrackTitle(rawTitle) {
+            return String(rawTitle || '')
+                .replace(/\.(mp3|m4a|aac|ogg|opus|wav|flac|webm)$/i, '')
+                .replace(/[_-]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
 
-            updateNowPlaying(radio);
+        function prettifyTrackTitle(title) {
+            const cleanTitle = cleanTrackTitle(title);
+            if (!cleanTitle) return '';
+
+            return cleanTitle.replace(/\p{L}/gu, letter => letter.toUpperCase());
+        }
+
+        function getTitleFromAudioUrl(url, fallbackTitle) {
+            try {
+                const audioUrl = new URL(url, window.location.href);
+                const lastPart = decodeURIComponent(audioUrl.pathname.split('/').filter(Boolean).pop() || '');
+                const cleanTitle = prettifyTrackTitle(lastPart);
+
+                if (cleanTitle && !/^\d+$/.test(cleanTitle)) {
+                    return cleanTitle;
+                }
+            } catch (error) {
+                console.warn('Impossible de lire le nom du morceau depuis le lien:', error);
+            }
+
+            return fallbackTitle || 'Prime Festival EDM';
+        }
+
+        function normalizePlaylistTrack(track, index = 0) {
+            const fallbackTitle = `Morceau ${index + 1}`;
+
+            if (typeof track === 'string') {
+                return {
+                    title: getTitleFromAudioUrl(track, fallbackTitle),
+                    artist: PRIME_FESTIVAL_ARTIST,
+                    url: track
+                };
+            }
+
+            const url = track?.url || track?.stream || '';
+            return {
+                title: track?.title || getTitleFromAudioUrl(url, fallbackTitle),
+                artist: PRIME_FESTIVAL_ARTIST,
+                url
+            };
+        }
+
+        function getPlaylistTracks(radio) {
+            if (!isPlaylistRadio(radio)) return [];
+            return radio.playlist
+                .map((track, index) => normalizePlaylistTrack(track, index))
+                .filter(track => track.url);
+        }
+
+        function getCurrentTrack(radio) {
+            const tracks = getPlaylistTracks(radio);
+
+            if (tracks.length) {
+                const safeIndex = ((currentPlaylistTrackIndex % tracks.length) + tracks.length) % tracks.length;
+                return tracks[safeIndex];
+            }
+
+            return {
+                title: radio?.name || 'Prime Radio',
+                artist: radio?.artist || radio?.location || 'En direct',
+                url: radio?.stream || ''
+            };
+        }
+
+        function getNowPlayingTitle(radio) {
+            return isPlaylistRadio(radio) ? getCurrentTrack(radio).title : radio.name;
+        }
+
+        function getNowPlayingSubtitle(radio) {
+            if (isPlaylistRadio(radio)) {
+                const track = getCurrentTrack(radio);
+                return `${track.artist || PRIME_FESTIVAL_ARTIST} · ${radio.name}`;
+            }
+
+            return `En direct de ${radio.location}`;
+        }
+
+        function setCurrentAudioSource(radio) {
+            const track = getCurrentTrack(radio);
+            audioElement.src = track.url || radio.stream || '';
+            audioElement.dataset.trackTitle = track.title || radio.name;
+            audioElement.dataset.trackArtist = track.artist || radio.artist || radio.location || '';
+        }
+
+        function handlePlaybackFailure(error, index = currentRadioIndex) {
+            console.error('Playback failed:', error);
+            isPlaying = false;
+            updatePlayerButtons();
             updatePlayingCard();
             updateMiniPlaying();
-            showPlayer();
+            visualizer.style.display = 'none';
+            visualizer.setAttribute('aria-hidden', 'true');
 
-            audioElement.src = radio.stream;
+            if (error && error.name === 'NotAllowedError') {
+                playerSubtitle.textContent = 'Touchez pour activer l’audio';
+                showAudioUnlockToast(index);
+
+                if (voiceStatusText) {
+                    voiceStatusText.textContent = 'Touchez l’écran une fois pour autoriser la lecture audio';
+                    voiceStatus.classList.add('active');
+                }
+            } else {
+                playerSubtitle.textContent = 'Erreur de lecture';
+            }
+
+            syncFullscreenPlayer();
+        }
+
+        function startCurrentAudio(index = currentRadioIndex) {
             const playPromise = audioElement.play();
 
             if (playPromise && typeof playPromise.catch === 'function') {
-                playPromise.catch(e => {
-                    console.error('Playback failed:', e);
-                    isPlaying = false;
-                    updatePlayerButtons();
-                    updatePlayingCard();
-                    updateMiniPlaying();
-                    visualizer.style.display = 'none';
-                    visualizer.setAttribute('aria-hidden', 'true');
-
-                    if (e && e.name === 'NotAllowedError') {
-                        playerSubtitle.textContent = 'Touchez pour activer l’audio';
-                        showAudioUnlockToast(index);
-
-                        if (voiceStatusText) {
-                            voiceStatusText.textContent = 'Touchez l’écran une fois pour autoriser la lecture audio';
-                            voiceStatus.classList.add('active');
-                        }
-                    } else {
-                        playerSubtitle.textContent = 'Erreur de lecture';
-                    }
-
-                    syncFullscreenPlayer();
-                });
+                playPromise.catch(error => handlePlaybackFailure(error, index));
             }
 
             isPlaying = true;
@@ -5423,6 +5538,45 @@ audioElement.volume = 0.3;
             visualizer.setAttribute('aria-hidden', 'false');
             hideAudioUnlockToast();
             syncFullscreenPlayer();
+        }
+
+        function playNextPlaylistTrack() {
+            if (currentRadioIndex === -1) return false;
+
+            const radio = radios[currentRadioIndex];
+            const tracks = getPlaylistTracks(radio);
+
+            if (!tracks.length) return false;
+
+            currentPlaylistTrackIndex = (currentPlaylistTrackIndex + 1) % tracks.length;
+            setCurrentAudioSource(radio);
+            updateNowPlaying(radio);
+            startCurrentAudio(currentRadioIndex);
+            return true;
+        }
+
+        function getVoiceNowPlayingText(radio, status) {
+            if (isPlaylistRadio(radio)) {
+                const track = getCurrentTrack(radio);
+                return `${track.title} - ${track.artist || PRIME_FESTIVAL_ARTIST} (${status})`;
+            }
+
+            return `Radio: ${radio.name} (${status})`;
+        }
+
+        function playRadio(index) {
+            if (index < 0 || index >= radios.length) return;
+
+            const radio = radios[index];
+            currentRadioIndex = index;
+            currentPlaylistTrackIndex = 0;
+
+            setCurrentAudioSource(radio);
+            updateNowPlaying(radio);
+            updatePlayingCard();
+            updateMiniPlaying();
+            showPlayer();
+            startCurrentAudio(index);
         }
 
         function togglePlay() {
@@ -5499,8 +5653,8 @@ audioElement.volume = 0.3;
         }
 
         function updateNowPlaying(radio) {
-            playerTitle.textContent = radio.name;
-            playerSubtitle.textContent = `En direct de ${radio.location}`;
+            playerTitle.textContent = getNowPlayingTitle(radio);
+            playerSubtitle.textContent = getNowPlayingSubtitle(radio);
             playerCoverImg.src = radio.logo;
             playerCoverImg.alt = `Logo ${radio.name}`;
             syncFullscreenPlayer();
@@ -5517,9 +5671,9 @@ audioElement.volume = 0.3;
                     logo: PRIME_LOGO_URL
                 };
 
-            fullscreenTitle.textContent = radio.name;
+            fullscreenTitle.textContent = currentRadioIndex !== -1 ? getNowPlayingTitle(radio) : radio.name;
             fullscreenSubtitle.textContent = currentRadioIndex !== -1
-                ? `En direct de ${radio.location}`
+                ? getNowPlayingSubtitle(radio)
                 : 'Cliquez sur une station pour commencer';
             fullscreenLogoImg.src = radio.logo || PRIME_LOGO_URL;
             fullscreenLogoImg.alt = `Logo ${radio.name}`;
@@ -5619,9 +5773,22 @@ audioElement.volume = 0.3;
         audioElement.addEventListener('canplay', () => {
             if (currentRadioIndex !== -1) {
                 const radio = radios[currentRadioIndex];
-                playerSubtitle.textContent = `En direct de ${radio.location}`;
+                playerTitle.textContent = getNowPlayingTitle(radio);
+                playerSubtitle.textContent = getNowPlayingSubtitle(radio);
             }
             syncFullscreenPlayer();
+        });
+
+        audioElement.addEventListener('ended', () => {
+            if (!playNextPlaylistTrack()) {
+                isPlaying = false;
+                updatePlayerButtons();
+                updatePlayingCard();
+                updateMiniPlaying();
+                visualizer.style.display = 'none';
+                visualizer.setAttribute('aria-hidden', 'true');
+                syncFullscreenPlayer();
+            }
         });
 
         audioElement.addEventListener('error', () => {
