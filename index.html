@@ -1186,6 +1186,78 @@
             background: var(--spotify-light);
         }
 
+        .seek-slider {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 100%;
+            cursor: pointer;
+            background: linear-gradient(to right, var(--spotify-green) 0%, var(--spotify-green) var(--seek-progress, 0%), #4d4d4d var(--seek-progress, 0%), #4d4d4d 100%);
+            outline: none;
+            border: 0;
+        }
+
+        .seek-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+            opacity: 0;
+            transition: opacity 130ms ease, transform 130ms ease;
+        }
+
+        .seek-slider::-moz-range-thumb {
+            width: 13px;
+            height: 13px;
+            border: 0;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+            opacity: 0;
+            transition: opacity 130ms ease, transform 130ms ease;
+        }
+
+        .progress-row.playlist-mode .seek-slider::-webkit-slider-thumb,
+        .fullscreen-progress-row.playlist-mode .seek-slider::-webkit-slider-thumb,
+        .seek-slider:focus-visible::-webkit-slider-thumb,
+        .seek-slider:hover::-webkit-slider-thumb {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        .progress-row.playlist-mode .seek-slider::-moz-range-thumb,
+        .fullscreen-progress-row.playlist-mode .seek-slider::-moz-range-thumb,
+        .seek-slider:focus-visible::-moz-range-thumb,
+        .seek-slider:hover::-moz-range-thumb {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        .seek-slider:disabled {
+            cursor: default;
+            opacity: 0.65;
+            background: #4d4d4d;
+        }
+
+        .fullscreen-progress-row {
+            width: min(520px, 100%);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 800;
+            margin: 4px auto 0;
+        }
+
+        .fullscreen-seek-slider {
+            flex: 1;
+            height: 7px;
+            border-radius: 999px;
+        }
+
         @keyframes liveProgress {
             0% { width: 12%; }
             50% { width: 78%; }
@@ -4192,17 +4264,15 @@
 
                 <div class="player-center">
                     <div class="player-controls">
-                        <button class="control-btn" onclick="previousRadio()" title="Station précédente" aria-label="Station précédente">⏮</button>
+                        <button class="control-btn" onclick="previousRadio()" title="Station précédente ou musique précédente" aria-label="Station précédente ou musique précédente">⏮</button>
                         <button class="control-btn play-btn" id="playBtn" onclick="togglePlay()" title="Lecture/Pause" aria-label="Lecture/Pause">▶</button>
-                        <button class="control-btn" onclick="nextRadio()" title="Station suivante" aria-label="Station suivante">⏭</button>
+                        <button class="control-btn" onclick="nextRadio()" title="Station suivante ou musique suivante" aria-label="Station suivante ou musique suivante">⏭</button>
                     </div>
 
-                    <div class="progress-row">
-                        <span>LIVE</span>
-                        <div class="progress-track" aria-hidden="true">
-                            <div class="progress-fill"></div>
-                        </div>
-                        <span>ON AIR</span>
+                    <div class="progress-row" id="progressRow">
+                        <span id="seekCurrentTime">LIVE</span>
+                        <input type="range" class="progress-track seek-slider" id="seekSlider" min="0" max="100" step="0.1" value="0" disabled aria-label="Avancer ou reculer dans la musique">
+                        <span id="seekDuration">ON AIR</span>
                     </div>
                 </div>
 
@@ -4259,9 +4329,15 @@
             </div>
 
             <div class="fullscreen-actions">
-                <button class="fullscreen-action-btn" type="button" onclick="previousRadio()" aria-label="Station précédente">⏮</button>
+                <button class="fullscreen-action-btn" type="button" onclick="previousRadio()" aria-label="Station précédente ou musique précédente">⏮</button>
                 <button class="fullscreen-action-btn main" type="button" id="fullscreenPlayBtn" onclick="togglePlay()" aria-label="Lecture">▶</button>
-                <button class="fullscreen-action-btn" type="button" onclick="nextRadio()" aria-label="Station suivante">⏭</button>
+                <button class="fullscreen-action-btn" type="button" onclick="nextRadio()" aria-label="Station suivante ou musique suivante">⏭</button>
+            </div>
+
+            <div class="fullscreen-progress-row" id="fullscreenProgressRow">
+                <span id="fullscreenSeekCurrentTime">LIVE</span>
+                <input type="range" class="fullscreen-seek-slider seek-slider" id="fullscreenSeekSlider" min="0" max="100" step="0.1" value="0" disabled aria-label="Avancer ou reculer dans la musique">
+                <span id="fullscreenSeekDuration">ON AIR</span>
             </div>
 
             <div class="fullscreen-caption">Affichage agrandi de la radio en cours avec animation autour du logo.</div>
@@ -4377,15 +4453,16 @@
         });
 
         const PRIME_FESTIVAL_ARTIST = "Prime Syntax";
+        const PRIME_FESTIVAL_LOGO_URL = "https://i.ibb.co/spcMQYZ8/5eaa67815d34.jpg";
 
         const PRIME_FESTIVAL_EDM_TRACKS = [
             {
-                title: "Prime Festival EDM",
+                title: "Néon Summer",
                 url: "https://cdn.discordapp.com/attachments/1500576941147689043/1500577003521441842/Neon_Summer.mp3?ex=69f8f0bd&is=69f79f3d&hm=829fca942af05b7bcd06f729e0ab361567363ab7828030dd4cf936b80b9b32f6&"
             }
             // Ajoute tes prochaines musiques Prime Festival EDM juste en dessous, comme ceci :
             // ,{
-            //     title: "Nom de la musique",
+            //     title: "Nom affiché dans le lecteur",
             //     url: "https://lien-direct-du-fichier-audio.mp3"
             // }
         ];
@@ -4497,7 +4574,7 @@
                 name: "Prime Festival EDM",
                 location: "Prime Syntax",
                 stream: PRIME_FESTIVAL_EDM_TRACKS[0]?.url || "",
-                logo: PRIME_LOGO_URL,
+                logo: PRIME_FESTIVAL_LOGO_URL,
                 artist: PRIME_FESTIVAL_ARTIST,
                 playlist: PRIME_FESTIVAL_EDM_TRACKS,
                 type: "playlist"
@@ -4533,6 +4610,14 @@
         const fullscreenPlayBtn = document.getElementById('fullscreenPlayBtn');
         const fullscreenLiveBadge = document.getElementById('fullscreenLiveBadge');
         const audioUnlockToast = document.getElementById('audioUnlockToast');
+        const progressRow = document.getElementById('progressRow');
+        const seekSlider = document.getElementById('seekSlider');
+        const seekCurrentTime = document.getElementById('seekCurrentTime');
+        const seekDuration = document.getElementById('seekDuration');
+        const fullscreenProgressRow = document.getElementById('fullscreenProgressRow');
+        const fullscreenSeekSlider = document.getElementById('fullscreenSeekSlider');
+        const fullscreenSeekCurrentTime = document.getElementById('fullscreenSeekCurrentTime');
+        const fullscreenSeekDuration = document.getElementById('fullscreenSeekDuration');
 
         let userHasInteractedWithPage = false;
         let pendingVoicePlaybackIndex = null;
@@ -5421,7 +5506,10 @@ audioElement.volume = 0.3;
             const cleanTitle = cleanTrackTitle(title);
             if (!cleanTitle) return '';
 
-            return cleanTitle.replace(/\p{L}/gu, letter => letter.toUpperCase());
+            return cleanTitle
+                .split(' ')
+                .map(word => word ? word.charAt(0).toUpperCase() + word.slice(1) : '')
+                .join(' ');
         }
 
         function getTitleFromAudioUrl(url, fallbackTitle) {
@@ -5551,7 +5639,86 @@ audioElement.volume = 0.3;
             currentPlaylistTrackIndex = (currentPlaylistTrackIndex + 1) % tracks.length;
             setCurrentAudioSource(radio);
             updateNowPlaying(radio);
+            updatePlayingCard();
+            updateMiniPlaying();
+            updateSeekUI();
             startCurrentAudio(currentRadioIndex);
+            return true;
+        }
+
+        function formatAudioTime(seconds) {
+            if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.floor(seconds % 60).toString().padStart(2, '0');
+            return `${minutes}:${remainingSeconds}`;
+        }
+
+        function getSeekControls() {
+            return [
+                {
+                    row: progressRow,
+                    slider: seekSlider,
+                    current: seekCurrentTime,
+                    duration: seekDuration
+                },
+                {
+                    row: fullscreenProgressRow,
+                    slider: fullscreenSeekSlider,
+                    current: fullscreenSeekCurrentTime,
+                    duration: fullscreenSeekDuration
+                }
+            ].filter(control => control.row && control.slider && control.current && control.duration);
+        }
+
+        function updateSeekUI() {
+            const radio = currentRadioIndex !== -1 ? radios[currentRadioIndex] : null;
+            const playlistMode = isPlaylistRadio(radio);
+            const duration = audioElement.duration;
+            const currentTime = audioElement.currentTime || 0;
+            const hasDuration = playlistMode && Number.isFinite(duration) && duration > 0;
+            const progress = hasDuration ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+
+            getSeekControls().forEach(({ row, slider, current, duration: durationLabel }) => {
+                row.classList.toggle('playlist-mode', playlistMode);
+                slider.disabled = !hasDuration;
+                slider.max = hasDuration ? String(duration) : '100';
+                slider.value = hasDuration ? String(currentTime) : '0';
+                slider.style.setProperty('--seek-progress', `${progress}%`);
+                current.textContent = playlistMode ? formatAudioTime(currentTime) : 'LIVE';
+                durationLabel.textContent = hasDuration ? formatAudioTime(duration) : (playlistMode ? '--:--' : 'ON AIR');
+            });
+        }
+
+        function seekTo(value) {
+            const radio = currentRadioIndex !== -1 ? radios[currentRadioIndex] : null;
+            const duration = audioElement.duration;
+
+            if (!isPlaylistRadio(radio) || !Number.isFinite(duration) || duration <= 0) return;
+
+            const nextTime = Math.min(duration, Math.max(0, parseFloat(value) || 0));
+            audioElement.currentTime = nextTime;
+            updateSeekUI();
+        }
+
+        function goToPlaylistTrack(direction) {
+            if (currentRadioIndex === -1) return false;
+
+            const radio = radios[currentRadioIndex];
+            const tracks = getPlaylistTracks(radio);
+
+            if (!tracks.length) return false;
+
+            currentPlaylistTrackIndex = (currentPlaylistTrackIndex + direction + tracks.length) % tracks.length;
+            setCurrentAudioSource(radio);
+            updateNowPlaying(radio);
+            updatePlayingCard();
+            updateMiniPlaying();
+            updateSeekUI();
+
+            if (isPlaying) {
+                startCurrentAudio(currentRadioIndex);
+            }
+
             return true;
         }
 
@@ -5575,6 +5742,7 @@ audioElement.volume = 0.3;
             updateNowPlaying(radio);
             updatePlayingCard();
             updateMiniPlaying();
+            updateSeekUI();
             showPlayer();
             startCurrentAudio(index);
         }
@@ -5623,6 +5791,10 @@ audioElement.volume = 0.3;
                 return;
             }
 
+            if (isPlaylistRadio(radios[currentRadioIndex]) && goToPlaylistTrack(1)) {
+                return;
+            }
+
             const nextIndex = (currentRadioIndex + 1) % radios.length;
             playRadio(nextIndex);
         }
@@ -5630,6 +5802,10 @@ audioElement.volume = 0.3;
         function previousRadio() {
             if (currentRadioIndex === -1) {
                 playRadio(radios.length - 1);
+                return;
+            }
+
+            if (isPlaylistRadio(radios[currentRadioIndex]) && goToPlaylistTrack(-1)) {
                 return;
             }
 
@@ -5765,10 +5941,22 @@ audioElement.volume = 0.3;
             }
         });
 
+        [seekSlider, fullscreenSeekSlider].forEach(slider => {
+            if (!slider) return;
+
+            slider.addEventListener('input', (event) => {
+                seekTo(event.target.value);
+            });
+        });
+
         audioElement.addEventListener('loadstart', () => {
             playerSubtitle.innerHTML = '<span class="loading"></span>Connexion...';
             if (fullscreenSubtitle) fullscreenSubtitle.textContent = 'Connexion...';
         });
+
+        audioElement.addEventListener('loadedmetadata', updateSeekUI);
+        audioElement.addEventListener('durationchange', updateSeekUI);
+        audioElement.addEventListener('timeupdate', updateSeekUI);
 
         audioElement.addEventListener('canplay', () => {
             if (currentRadioIndex !== -1) {
@@ -5776,6 +5964,7 @@ audioElement.volume = 0.3;
                 playerTitle.textContent = getNowPlayingTitle(radio);
                 playerSubtitle.textContent = getNowPlayingSubtitle(radio);
             }
+            updateSeekUI();
             syncFullscreenPlayer();
         });
 
@@ -5800,6 +5989,7 @@ audioElement.volume = 0.3;
             if (fullscreenSubtitle) fullscreenSubtitle.textContent = 'Erreur de connexion';
             updatePlayingCard();
             updateMiniPlaying();
+            updateSeekUI();
             syncFullscreenPlayer();
         });
 
@@ -5854,6 +6044,7 @@ audioElement.volume = 0.3;
         }
 
         syncFullscreenPlayer();
+        updateSeekUI();
 
         window.addEventListener('orientationchange', () => {
             setTimeout(() => {
