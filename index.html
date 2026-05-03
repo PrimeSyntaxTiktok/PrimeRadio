@@ -4151,6 +4151,39 @@
             }
         }
 
+
+        /* === Correctif Prime Festival EDM : boutons précédent/suivant toujours visibles === */
+        .audio-player .player-controls,
+        .radio-fullscreen .fullscreen-actions,
+        html.prime-mobile-force .player-controls {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+
+        .audio-player .control-btn,
+        .audio-player .control-btn:not(.play-btn),
+        .radio-fullscreen .fullscreen-action-btn,
+        .radio-fullscreen .fullscreen-action-btn:not(.main),
+        html.prime-mobile-force .control-btn,
+        html.prime-mobile-force .control-btn:not(.play-btn) {
+            display: inline-grid !important;
+            place-items: center !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            flex: 0 0 auto !important;
+        }
+
+        .audio-player .control-btn svg,
+        .radio-fullscreen .fullscreen-action-btn svg,
+        html.prime-mobile-force .control-btn svg {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
     </style>
 </head>
 
@@ -4460,10 +4493,15 @@
                 title: "Néon Summer",
                 url: "https://cdn.discordapp.com/attachments/1500576941147689043/1500577003521441842/Neon_Summer.mp3?ex=69f8f0bd&is=69f79f3d&hm=829fca942af05b7bcd06f729e0ab361567363ab7828030dd4cf936b80b9b32f6&"
             },
-                        {
+            {
                 title: "Thunderhands Anthem",
                 url: "https://cdn.discordapp.com/attachments/1500576941147689043/1500585089577386164/Thunderhands_Anthem.mp3?ex=69f8f844&is=69f7a6c4&hm=335002fa387aae41a9c9d3f1f203edfab043d30483525bee390995bd709ec2f9&"
             }
+            // Ajoute tes prochaines musiques Prime Festival EDM juste en dessous, comme ceci :
+            // ,{
+            //     title: "Nom affiché dans le lecteur",
+            //     url: "https://lien-direct-du-fichier-audio.mp3"
+            // }
         ];
 
         const radios = [
@@ -4693,8 +4731,8 @@
         function refreshSpotifyStaticIcons() {
             document.querySelectorAll('.circle-btn[title="Station précédente"]').forEach(btn => setSpotifyIcon(btn, 'chevronLeft', 'Station précédente'));
             document.querySelectorAll('.circle-btn[title="Station suivante"]').forEach(btn => setSpotifyIcon(btn, 'chevronRight', 'Station suivante'));
-            document.querySelectorAll('.control-btn[title="Station précédente"], .fullscreen-action-btn[aria-label="Station précédente"]').forEach(btn => setSpotifyIcon(btn, 'previous', 'Station précédente'));
-            document.querySelectorAll('.control-btn[title="Station suivante"], .fullscreen-action-btn[aria-label="Station suivante"]').forEach(btn => setSpotifyIcon(btn, 'next', 'Station suivante'));
+            document.querySelectorAll('.control-btn[onclick="previousRadio()"], .fullscreen-action-btn[onclick="previousRadio()"]').forEach(btn => setSpotifyIcon(btn, 'previous', 'Musique précédente'));
+            document.querySelectorAll('.control-btn[onclick="nextRadio()"], .fullscreen-action-btn[onclick="nextRadio()"]').forEach(btn => setSpotifyIcon(btn, 'next', 'Musique suivante'));
             document.querySelectorAll('.fullscreen-close').forEach(btn => setSpotifyIcon(btn, 'close', "Fermer l'affichage agrandi"));
             setSpotifyIcon(expandPlayerBtn, 'expand', 'Agrandir le lecteur');
             updatePlayerButtons();
